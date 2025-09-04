@@ -16,7 +16,10 @@ def check_and_reset_season():
         start_date = normalize_to_midnight(now)
         db.new_season(season_number)
     
-    start_date = normalize_to_midnight(start_date)
+    if start_date:
+        start_date = normalize_to_midnight(start_date)
+    else:
+        start_date = normalize_to_midnight(now)
 
     next_reset = start_date + timedelta(days=30)
     next_reset = normalize_to_midnight(next_reset)
