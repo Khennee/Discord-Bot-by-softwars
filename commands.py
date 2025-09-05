@@ -130,3 +130,77 @@ class TraydorCommands(commands.Cog):
             color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed)
+
+    @discord.app_commands.command(
+        name="pingtraydors",
+        description="Ping everyone and require them to press Join within 5 minutes or get points"
+    )
+    async def pingtraydors(self, interaction: discord.Interaction):
+        try:
+            OWNER_ID = 640054746560069634
+            if interaction.user.id != OWNER_ID:
+                await interaction.response.send_message(
+                    "❌ You are not authorized to use this command.",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.defer(thinking=True)
+
+            guild = interaction.guild
+            if guild is None:
+                await interaction.followup.send("❌ This command can only be used in a server.")
+                return
+
+            members = [m for m in guild.members if not m.bot]  # exclude bots
+            if not members:
+                await interaction.followup.send("❌ No members found in this server.")
+                return
+
+            joined = set()
+
+            class JoinView(discord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=300)  # 5 minutes
+
+                @discord.ui.button(label="Join", style=discord.ButtonStyle.success)
+                async def join_button(self, interaction_btn: discord.Interaction, button: discord.ui.Button):
+                    user = interaction_btn.user
+                    joined.add(user.id)
+                    await interaction_btn.response.send_message(
+                        f"✅ {user.display_name} joined in time!", ephemeral=True
+                    )
+
+            view = JoinView()
+
+            # Send the message with @everyone ping
+            await interaction.followup.send(
+                content=(
+                    f"🚨 **Attention @everyone!**\n"
+                    f"You have **5 minutes** to press the **Join** button below "
+                    f"or you will receive Traydor points! 👇"
+                ),
+                allowed_mentions=discord.AllowedMentions(everyone=True),
+                view=view
+            )
+
+            # Wait until the 5-minute window expires
+            await view.wait()
+
+            # Process members who failed to join
+            failed = [m for m in members if m.id not in joined]
+
+            if not failed:
+                await interaction.followup.send("🎉 Everyone pressed **Join** in time! No Traydor points given.")
+                return
+
+            results = []
+            for member in failed:
+                points = random.randint(1, 5)
+                total = db.add_points(str(member.id), member.display_name, points)
+                results.append(f"❌ {member.display_name} failed and got **{points}** points (now {total}).")
+
+            await interaction.followup.send("\n".join(results))
+
+        except Exception as e:
+            await interaction.followup.send(f"⚠️ Error: {e}", ephemeral=True)
