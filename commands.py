@@ -137,6 +137,14 @@ class TraydorCommands(commands.Cog):
     )
     async def pingtraydors(self, interaction: discord.Interaction):
         try:
+            OWNER_ID = 640054746560069634
+            if interaction.user.id != OWNER_ID:
+                await interaction.response.send_message(
+                    "❌ You are not authorized to use this command.",
+                    ephemeral=True
+                )
+                return
+
             await interaction.response.defer(thinking=True)
 
             guild = interaction.guild
